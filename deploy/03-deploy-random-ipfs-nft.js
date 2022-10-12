@@ -39,21 +39,18 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
     }
 
     if (chainId == 31337) {
-        // create VRFV2 Subscription
         vrfCoordinatorV2Mock = await ethers.getContract("VRFCoordinatorV2Mock")
         vrfCoordinatorV2Address = vrfCoordinatorV2Mock.address
         const transactionResponse = await vrfCoordinatorV2Mock.createSubscription()
         const transactionReceipt = await transactionResponse.wait()
         subscriptionId = transactionReceipt.events[0].args.subId
-        // Fund the subscription
-        // Our mock makes it so we don't actually have to worry about sending fund
         await vrfCoordinatorV2Mock.fundSubscription(subscriptionId, FUND_AMOUNT)
     } else {
         vrfCoordinatorV2Address = networkConfig[chainId].vrfCoordinatorV2
         subscriptionId = networkConfig[chainId].subscriptionId
     }
 
-    log("----------------------------------------------------")
+    log("###################################################")
     arguments = [
         vrfCoordinatorV2Address,
         subscriptionId,
@@ -81,9 +78,6 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
 }
 
 async function handleTokenUris() {
-    // Check out https://github.com/PatrickAlphaC/nft-mix for a pythonic version of uploading
-    // to the raw IPFS-daemon from https://docs.ipfs.io/how-to/command-line-quick-start/
-    // You could also look at pinata https://www.pinata.cloud/
     tokenUris = []
     const { responses: imageUploadResponses, files } = await storeImages(imagesLocation)
     for (imageUploadResponseIndex in imageUploadResponses) {

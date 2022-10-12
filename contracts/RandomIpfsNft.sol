@@ -8,9 +8,10 @@ import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
 import "hardhat/console.sol";
 
 // Error
-error RandomIpfsNft__RangeOutOfBounds;
-error RandomIpfsNft__NeedMorEthToMint;
-error RandomIpfsNft__WithdrawFailed; 
+error RandomIpfsNft__AlreadyInitialized();
+error RandomIpfsNft__NeedMoreETHSent();
+error RandomIpfsNft__RangeOutOfBounds();
+error RandomIpfsNft__TransferFailed();
 
 // Event
 
@@ -25,6 +26,7 @@ contract RandomIpfsNft is VRFConsumerBaseV2, ERC721URIStorage, Ownable {
     uint32 private constant NUM_WORDS = 1;
     bytes32 private immutable i_gasLine;
     uint256 internal immutable i_mintfee;
+    bool private i_initialized;
 
 
     // HELPERS
@@ -56,11 +58,11 @@ contract RandomIpfsNft is VRFConsumerBaseV2, ERC721URIStorage, Ownable {
         i_gasLine = gasLane;
         i_subcriptionId = subscriptionId;
         i_mintfee = mintfee;
-
+        _initializeContract(dogTokenUris);
     }
     function requestNft() public payable returns (uint256 requestId){
         if (msg.value < i_mintfee) {
-            revert RandomIpfsNft__NeedMorEthToMin(); 
+            revert RandomIpfsNft__NeedMoreETHSent(); 
         }
         requestId = i_vrfCoordinator.requestRandomWords(i_gasLine, i_subcriptionId, REQUEST_CONFIRMATIONS, i_callbackGasLimit, NUM_WORDS);
         s_requestIdToSender[requestId] = msg.sender; 
@@ -73,8 +75,6 @@ contract RandomIpfsNft is VRFConsumerBaseV2, ERC721URIStorage, Ownable {
         _safeMint(dowOwner, newTokenId);
         _setTokenURI(newTokenId, s_dogTokenUris[uint256(dogBreed)]);
         emit NftRequested(requestId, msg.sender);
-
-
     }
 
     function withdraw() public onlyOwner {
@@ -96,7 +96,16 @@ contract RandomIpfsNft is VRFConsumerBaseV2, ERC721URIStorage, Ownable {
             }
             cumulativeSum += chanceArray[i]; 
         }
-        revert RandomIpfsNft__RangeOutOfBounds();
+        revert RandomIpfsNft__TransferFailed();
+    }
+
+    function _initializeContract(string[3] memory dogTokenUris) private {
+        if (s_initialized) {
+            revert RandomIpfsNft__AlreadyInitialized();
+        }
+        s_dogTokenUris = dogTokenUris;
+        i_initialized = true;
+        
     }
 
     function getMintFee() public view returns (uint256) {
